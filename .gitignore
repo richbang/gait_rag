@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data
+storage/
+data/extracted/
+data/extracted_texts/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+.env.local
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Temporary
+*.tmp
+*.bak
+*.backup
+~*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+results/
+archive/
+old_*
+*_old.*
+*_backup.*

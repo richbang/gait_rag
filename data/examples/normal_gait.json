@@ -1,0 +1,25 @@
+{
+  "timestamp": 1234567890,
+  "gait_parameters": {
+    "step_length": 0.65,
+    "cadence": 110,
+    "walking_speed": 1.2
+  },
+  "joint_positions": {
+    "hip": [
+      0,
+      0,
+      1.0
+    ],
+    "knee": [
+      0,
+      0,
+      0.5
+    ],
+    "ankle": [
+      0,
+      0,
+      0
+    ]
+  }
+}
