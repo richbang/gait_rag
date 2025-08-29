@@ -6,6 +6,7 @@ import torch
 import numpy as np
 from typing import List, Optional
 import logging
+import os
 from transformers import AutoModel
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -56,24 +57,45 @@ class JinaEmbeddingService(EmbeddingService):
         """Initialize the embedding model"""
         logger.info(f"Loading Jina model: {self.model_name}")
         
+        # Debug GPU availability
+        import sys
+        logger.info(f"Python executable: {sys.executable}")
+        logger.info(f"CUDA available: {torch.cuda.is_available()}")
+        if torch.cuda.is_available():
+            logger.info(f"CUDA device count: {torch.cuda.device_count()}")
+            logger.info(f"Current CUDA device: {torch.cuda.current_device()}")
+        else:
+            logger.info(f"PyTorch version: {torch.__version__}")
+            logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', 'Not set')}")
+        logger.info(f"Requested device: {self.device}")
+        
         # Determine dtype based on device
-        dtype = torch.float16 if "cuda" in self.device else torch.float32
+        dtype = torch.float16 if self.device and "cuda" in self.device else torch.float32
         
         # Load model with trust_remote_code for Jina models
         # API 체크완료: AutoModel.from_pretrained() with trust_remote_code=True correct for Jina
+        # Disable bitsandbytes quantization
         self.model = AutoModel.from_pretrained(
             self.model_name,
             trust_remote_code=True,
-            torch_dtype=dtype
+            torch_dtype=dtype,
+            load_in_8bit=False,  # Explicitly disable 8-bit quantization
+            load_in_4bit=False   # Explicitly disable 4-bit quantization
         )
         
         # Move to device
-        if "cuda" in self.device:
-            # When CUDA_VISIBLE_DEVICES is set, always use cuda:0
-            actual_device = "cuda:0"
-            self.model = self.model.to(actual_device)
+        if self.device and "cuda" in self.device:
+            # Check if CUDA is really available
+            if torch.cuda.is_available():
+                # Use the specified device directly
+                self.model = self.model.to(self.device)
+                logger.info(f"Model moved to {self.device}")
+            else:
+                logger.warning(f"CUDA requested but not available, falling back to CPU")
+                self.model = self.model.to("cpu")
         else:
             self.model = self.model.to("cpu")
+            logger.info("Model running on CPU")
         
         self.model.eval()
         

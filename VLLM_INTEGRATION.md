@@ -29,7 +29,7 @@ The Medical Gait RAG system now supports answer generation using vLLM with the S
 USE_VLLM=true                              # Enable/disable vLLM integration
 VLLM_API_URL=http://localhost:8000/v1      # vLLM server endpoint
 VLLM_MODEL=Seed-OSS-36B-Instruct-AWQ       # Model name as served
-VLLM_MAX_TOKENS=4096                       # Max tokens to generate
+VLLM_MAX_TOKENS=8192                       # Max tokens to generate
 VLLM_TEMPERATURE=0.1                       # Generation temperature
 VLLM_CONTEXT_LENGTH=128000                 # Model context window
 ```

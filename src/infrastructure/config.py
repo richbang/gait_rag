@@ -140,6 +140,14 @@ class Settings(BaseSettings):
         default=None,
         env="CUDA_VISIBLE_DEVICES"
     )
+    vllm_cuda_visible_devices: Optional[str] = Field(
+        default=None,
+        env="VLLM_CUDA_VISIBLE_DEVICES"
+    )
+    vllm_tensor_parallel_size: int = Field(
+        default=2,
+        env="VLLM_TENSOR_PARALLEL_SIZE"
+    )
     
     class Config:
         env_file = ".env"
