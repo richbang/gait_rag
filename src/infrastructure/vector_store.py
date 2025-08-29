@@ -196,13 +196,17 @@ class ChromaVectorStore(VectorRepository):
                 
                 # Reconstruct chunk
                 metadata = results["metadatas"][0][i]
+                
+                # Handle missing document_id (for legacy data)
+                doc_id = metadata.get("document_id", "unknown")
+                
                 chunk = DocumentChunk(
                     chunk_id=results["ids"][0][i],
-                    document_id=metadata["document_id"],
+                    document_id=doc_id,
                     content=results["documents"][0][i],
-                    page_number=metadata["page_number"],
-                    chunk_index=metadata["chunk_index"],
-                    chunk_type=DocumentType(metadata["chunk_type"]),
+                    page_number=metadata.get("page_number", 0),
+                    chunk_index=metadata.get("chunk_index", 0),
+                    chunk_type=DocumentType(metadata.get("chunk_type", "text")),
                     metadata={k: v for k, v in metadata.items() 
                              if k not in ["document_id", "page_number", 
                                          "chunk_index", "chunk_type", 
@@ -223,7 +227,7 @@ class ChromaVectorStore(VectorRepository):
                 search_result = SearchResult(
                     chunk=chunk,
                     score=score,
-                    document_metadata={"document_id": metadata["document_id"]}
+                    document_metadata={"document_id": doc_id}
                 )
                 
                 search_results.append(search_result)

@@ -134,18 +134,45 @@ class JinaEmbeddingService(EmbeddingService):
         def _encode():
             with torch.no_grad():
                 # Use Jina's encode_text method
-                # API 체크완료: encode_text(texts=, task="retrieval", prompt_name=) correct
                 embeddings = self.model.encode_text(
                     texts=[text],
                     task="retrieval",
                     prompt_name=task_type
                 )
                 
-                # Convert to numpy
-                if torch.is_tensor(embeddings):
-                    embeddings = embeddings.cpu().numpy()
+                # Debug logging
+                logger.debug(f"encode_text output type: {type(embeddings)}")
+                logger.debug(f"encode_text output: {embeddings if not torch.is_tensor(embeddings) else f'Tensor shape={embeddings.shape}, device={embeddings.device}'}")
                 
-                return embeddings.astype(np.float32)[0]
+                try:
+                    # Check if it's a list containing tensors (Jina v4 returns list)
+                    if isinstance(embeddings, list):
+                        # Convert first tensor in the list to numpy
+                        if len(embeddings) > 0 and torch.is_tensor(embeddings[0]):
+                            result = embeddings[0].detach().cpu().numpy()
+                        else:
+                            result = np.array(embeddings[0])
+                    elif torch.is_tensor(embeddings):
+                        # Make sure it's on CPU and detached
+                        result = embeddings.detach().cpu().numpy()
+                    elif hasattr(embeddings, '__array__'):
+                        # It might already be numpy-like
+                        result = np.array(embeddings)
+                    else:
+                        # Last resort - try to convert directly
+                        result = np.array(embeddings)
+                    
+                    # Ensure float32 and get first element if batch
+                    result = result.astype(np.float32)
+                    if len(result.shape) > 1 and result.shape[0] == 1:
+                        return result[0]
+                    return result
+                    
+                except Exception as e:
+                    logger.error(f"Failed to convert embeddings: {e}")
+                    logger.error(f"Embeddings type: {type(embeddings)}")
+                    logger.error(f"Embeddings attributes: {dir(embeddings)}")
+                    raise
         
         # Run in thread pool to avoid blocking
         embedding = await loop.run_in_executor(self.executor, _encode)
@@ -162,18 +189,40 @@ class JinaEmbeddingService(EmbeddingService):
         def _encode():
             with torch.no_grad():
                 # Use Jina's encode_text method for batch
-                # API 체크완료: encode_text(texts=, task="retrieval", prompt_name=) for batch correct
                 embeddings = self.model.encode_text(
                     texts=texts,
                     task="retrieval",
                     prompt_name=task_type
                 )
                 
-                # Convert to numpy
-                if torch.is_tensor(embeddings):
-                    embeddings = embeddings.cpu().numpy()
-                
-                return embeddings.astype(np.float32)
+                try:
+                    # Check if it's a list containing tensors (Jina v4 returns list)
+                    if isinstance(embeddings, list):
+                        # Convert each tensor in the list to numpy
+                        result = []
+                        for emb in embeddings:
+                            if torch.is_tensor(emb):
+                                result.append(emb.detach().cpu().numpy())
+                            else:
+                                result.append(np.array(emb))
+                        result = np.array(result)
+                    elif torch.is_tensor(embeddings):
+                        # Make sure it's on CPU and detached
+                        result = embeddings.detach().cpu().numpy()
+                    elif hasattr(embeddings, '__array__'):
+                        # It might already be numpy-like
+                        result = np.array(embeddings)
+                    else:
+                        # Last resort - try to convert directly
+                        result = np.array(embeddings)
+                    
+                    # Ensure float32
+                    return result.astype(np.float32)
+                    
+                except Exception as e:
+                    logger.error(f"Failed to convert batch embeddings: {e}")
+                    logger.error(f"Embeddings type: {type(embeddings)}")
+                    raise
         
         # Run in thread pool
         embeddings = await loop.run_in_executor(self.executor, _encode)
