@@ -145,6 +145,12 @@ class JinaEmbeddingService(EmbeddingService):
                 logger.debug(f"encode_text output: {embeddings if not torch.is_tensor(embeddings) else f'Tensor shape={embeddings.shape}, device={embeddings.device}'}")
                 
                 try:
+                    # Handle None case first
+                    if embeddings is None:
+                        logger.error("Model returned None embeddings")
+                        # Return a zero vector as fallback
+                        return np.zeros(self.dimension, dtype=np.float32)
+                    
                     # Check if it's a list containing tensors (Jina v4 returns list)
                     if isinstance(embeddings, list):
                         # Convert first tensor in the list to numpy
@@ -196,6 +202,12 @@ class JinaEmbeddingService(EmbeddingService):
                 )
                 
                 try:
+                    # Handle None case first
+                    if embeddings is None:
+                        logger.error("Model returned None embeddings")
+                        # Return a zero vector as fallback
+                        return np.zeros(self.dimension, dtype=np.float32)
+                    
                     # Check if it's a list containing tensors (Jina v4 returns list)
                     if isinstance(embeddings, list):
                         # Convert each tensor in the list to numpy
