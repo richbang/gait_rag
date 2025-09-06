@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Medical Gait RAG System - Startup Script
+# Medical Gait RAG System - 전체 서비스 시작 스크립트
+# 실행 순서: vLLM → RAG API → WebUI Backend → Frontend
 
 echo "================================================"
 echo "Medical Gait RAG System - Starting All Services"
@@ -9,9 +10,9 @@ echo "================================================"
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
-# Check if vLLM is already running
+# 1. vLLM 서버 확인 및 시작 (포트 8000)
 if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null ; then
-    echo "✓ vLLM already running on port 8000"
+    echo "vLLM already running on port 8000"
 else
     echo "Starting vLLM server..."
     cd /data1/home/ict12/Kmong/medical_gait_rag
@@ -20,44 +21,44 @@ else
         echo "Starting Nemotron-Nano-12B model..."
         ./start_vllm_nemotron.sh &
     else
-        echo "❌ vLLM startup script not found"
+        echo "ERROR: vLLM startup script not found"
         exit 1
     fi
     sleep 10
-    echo "✓ vLLM started on port 8000"
+    echo "vLLM started on port 8000"
 fi
 
-# Check if RAG API is already running
+# 2. RAG API 서버 확인 및 시작 (포트 8001)
 if lsof -Pi :8001 -sTCP:LISTEN -t >/dev/null ; then
-    echo "✓ RAG API already running on port 8001"
+    echo "RAG API already running on port 8001"
 else
     echo "Starting RAG API..."
     cd /data1/home/ict12/Kmong/medical_gait_rag
     python api.py > logs/rag_api.log 2>&1 &
     sleep 5
-    echo "✓ RAG API started on port 8001"
+    echo "RAG API started on port 8001"
 fi
 
-# Check if WebUI Backend is already running
+# 3. WebUI Backend 서버 확인 및 시작 (포트 8003)
 if lsof -Pi :8003 -sTCP:LISTEN -t >/dev/null ; then
-    echo "✓ WebUI Backend already running on port 8003"
+    echo "WebUI Backend already running on port 8003"
 else
     echo "Starting WebUI Backend..."
     cd /data1/home/ict12/Kmong/medical_gait_rag/backend
     python main.py > ../logs/webui_backend.log 2>&1 &
     sleep 3
-    echo "✓ WebUI Backend started on port 8003"
+    echo "WebUI Backend started on port 8003"
 fi
 
-# Check if Frontend is already running
+# 4. Frontend 개발 서버 확인 및 시작 (포트 3000)
 if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null ; then
-    echo "✓ Frontend already running on port 3000"
+    echo "Frontend already running on port 3000"
 else
     echo "Starting Frontend..."
     cd /data1/home/ict12/Kmong/medical_gait_rag/frontend
     npm start > ../logs/frontend.log 2>&1 &
     sleep 5
-    echo "✓ Frontend started on port 3000"
+    echo "Frontend started on port 3000"
 fi
 
 echo ""

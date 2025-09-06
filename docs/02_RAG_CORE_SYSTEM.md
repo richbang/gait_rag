@@ -65,7 +65,7 @@ metadata = {
 
 **주요 기능:**
 - Jina Embeddings v4 모델 사용 (2048차원)
-- GPU 6번 사용 (CUDA_VISIBLE_DEVICES=6)
+- GPU 6번 사용 (CUDA_VISIBLE_DEVICES=2)
 - 배치 처리 지원 (기본 8개)
 - 최대 8192 토큰 지원
 

@@ -48,9 +48,9 @@ Medical Gait RAG는 의료 보행 분석 문서를 처리하고 검색하는 3-t
 
 ## GPU 할당
 
-- **GPU 0**: 일반 작업 (회피)
-- **GPU 1 (CUDA_VISIBLE_DEVICES=6)**: Jina Embeddings v4
-- **GPU 4,5**: vLLM Nemotron (Tensor Parallel)
+- **GPU 0,1**: vLLM Nemotron (Tensor Parallel)
+- **GPU 2 (CUDA_VISIBLE_DEVICES=2)**: Jina Embeddings v4
+
 
 ## 프로세스 시작 순서
 
@@ -72,8 +72,8 @@ Medical Gait RAG는 의료 보행 분석 문서를 처리하고 검색하는 3-t
 
 ```bash
 # GPU 설정
-CUDA_VISIBLE_DEVICES=6  # Embedding GPU
-VLLM_CUDA_VISIBLE_DEVICES=4,5  # LLM GPUs
+CUDA_VISIBLE_DEVICES=2  # Embedding GPU
+VLLM_CUDA_VISIBLE_DEVICES=0,1  # LLM GPUs
 
 # 모델 설정
 VLLM_MAX_TOKENS=8192
