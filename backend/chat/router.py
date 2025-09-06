@@ -11,7 +11,7 @@ from database.models import User
 from auth.dependencies import get_current_user
 from core.middleware import APIResponse
 from .schemas import (
-    ConversationCreate, ConversationResponse, ConversationWithMessages,
+    ConversationCreate, ConversationUpdate, ConversationResponse, ConversationWithMessages,
     MessageCreate, MessageResponse, SearchRequest, QARequest
 )
 from .service import ChatService
@@ -137,6 +137,53 @@ async def get_conversation(
         raise
     except Exception as e:
         logger.error(f"Get conversation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.put("/conversations/{conversation_id}", response_model=ConversationResponse)
+async def update_conversation(
+    conversation_id: int,
+    conversation_data: ConversationUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update conversation title."""
+    try:
+        chat_service = ChatService(db)
+        conversation = chat_service.get_conversation(
+            conversation_id,
+            current_user.id
+        )
+        
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        
+        # Update title
+        conversation.title = conversation_data.title
+        from datetime import datetime
+        conversation.updated_at = datetime.utcnow()
+        db.commit()
+        
+        logger.info(f"Updated conversation {conversation_id} title to: {conversation_data.title}")
+        
+        return ConversationResponse(
+            id=conversation.id,
+            user_id=conversation.user_id,
+            title=conversation.title,
+            created_at=conversation.created_at,
+            updated_at=conversation.updated_at,
+            message_count=len(conversation.messages)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update conversation error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)

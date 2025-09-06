@@ -6,13 +6,23 @@ echo "================================================"
 echo "Medical Gait RAG System - Starting All Services"
 echo "================================================"
 
+# Create logs directory if it doesn't exist
+mkdir -p logs
+
 # Check if vLLM is already running
 if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null ; then
     echo "✓ vLLM already running on port 8000"
 else
     echo "Starting vLLM server..."
     cd /data1/home/ict12/Kmong/medical_gait_rag
-    ./start_vllm_server.sh &
+    # Start Nemotron model
+    if [ -f "./start_vllm_nemotron.sh" ]; then
+        echo "Starting Nemotron-Nano-12B model..."
+        ./start_vllm_nemotron.sh &
+    else
+        echo "❌ vLLM startup script not found"
+        exit 1
+    fi
     sleep 10
     echo "✓ vLLM started on port 8000"
 fi

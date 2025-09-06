@@ -11,6 +11,12 @@ class ConversationCreate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
 
 
+class ConversationUpdate(BaseModel):
+    """Conversation update schema."""
+    
+    title: str = Field(..., min_length=1, max_length=255)
+
+
 class ConversationResponse(BaseModel):
     """Conversation response schema."""
     

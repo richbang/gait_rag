@@ -3,7 +3,7 @@
 # NVIDIA Nemotron-Nano-12B-v2 vLLM Server Startup Script
 # 12.3B parameter Mamba-Transformer hybrid model
 
-echo "🚀 Starting NVIDIA Nemotron-Nano-12B-v2"
+echo "Starting NVIDIA Nemotron-Nano-12B-v2"
 echo "=========================================="
 
 # Activate conda environment

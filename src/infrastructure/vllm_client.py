@@ -37,7 +37,7 @@ class VLLMClient:
         self.temperature = temperature
         self.timeout = timeout
         
-        # HTTP client with connection pooling
+        # HTTP 클라이언트 초기화 (connection pooling 지원)
         self.client = httpx.AsyncClient(timeout=timeout)
         
         logger.info(f"vLLM client initialized for {api_url} with model {model}")
@@ -59,16 +59,16 @@ class VLLMClient:
         Returns:
             Generated text response
         """
-        # Construct full prompt
+        # 전체 프롬프트 구성
         full_prompt = self._construct_prompt(prompt, context, system_prompt)
         
-        # Log the prompt for debugging
+        # 디버깅을 위한 프롬프트 로깅
         logger.info("=" * 80)
         logger.info("LLM PROMPT:")
         logger.info("-" * 80)
-        logger.info(full_prompt[:2000])  # Log first 2000 chars
+        logger.info(full_prompt[:2000])  # 처음 2000자만 로깅
         
-        # Estimate token count (rough approximation: 1 token ≈ 3-4 characters for Korean/English)
+        # 토큰 수 추정 (한글/영어 기준: 1 토큰 ≈ 3-4자)
         estimated_tokens = len(full_prompt) // 3
         
         if len(full_prompt) > 2000:
@@ -76,32 +76,33 @@ class VLLMClient:
         else:
             logger.info(f"Total length: {len(full_prompt)} chars, ~{estimated_tokens} tokens")
         
-        # Warn if approaching context limit (assuming 32K context)
-        if estimated_tokens > 28000:
-            logger.warning(f"⚠️ Approaching context limit! Estimated tokens: {estimated_tokens}/32768")
-        elif estimated_tokens > 20000:
-            logger.info(f"📊 Context usage: {estimated_tokens}/32768 tokens ({estimated_tokens*100//32768}%)")
+        # 컨텍스트 한계 경고 (131K 컨텍스트 기준 - Nemotron)
+        if estimated_tokens > 120000:
+            logger.warning(f"Approaching context limit! Estimated tokens: {estimated_tokens}/131072")
+        elif estimated_tokens > 80000:
+            logger.info(f"Context usage: {estimated_tokens}/131072 tokens ({estimated_tokens*100//131072}%)")
         
         logger.info("=" * 80)
         
-        # Use regular completions endpoint (Nemotron and Seed-OSS support this)
+        # completions 엔드포인트 사용 (Nemotron과 Seed-OSS 모두 지원)
         payload = {
             "model": self.model,
             "prompt": full_prompt,
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "stream": False,
-            "top_p": 0.95  # Nemotron recommended setting
+            "top_p": 0.95,  # Nemotron 권장 설정
+            "stop": ["</think>", "\n</think>", "<think>", "\n<think>"]  # thinking 태그에서 중단
         }
         
         endpoint = f"{self.api_url}/completions"
         
         try:
-            # Send request to vLLM server
+            # vLLM 서버로 요청 전송
             response = await self.client.post(endpoint, json=payload)
             response.raise_for_status()
             
-            # Extract generated text
+            # 생성된 텍스트 추출
             result = response.json()
             generated_text = result["choices"][0]["text"]
             

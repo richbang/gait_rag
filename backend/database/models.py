@@ -19,6 +19,7 @@ class User(Base):
     full_name = Column(String(200))
     department = Column(String(100))
     is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

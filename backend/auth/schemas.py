@@ -12,6 +12,7 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=8)
     full_name: Optional[str] = Field(None, max_length=200)
     department: Optional[str] = Field(None, max_length=100)
+    is_admin: Optional[bool] = Field(False)
     
     @validator("username")
     def validate_username(cls, v):
@@ -36,6 +37,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str]
     department: Optional[str]
     is_active: bool
+    is_admin: bool
     created_at: datetime
     
     class Config:
@@ -56,3 +58,5 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=200)
     department: Optional[str] = Field(None, max_length=100)
     password: Optional[str] = Field(None, min_length=8)
+    is_active: Optional[bool] = Field(None)
+    is_admin: Optional[bool] = Field(None)

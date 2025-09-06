@@ -329,6 +329,48 @@ def setup_routes(app: FastAPI):  # API 체크완료: Route setup function correc
             logger.error(f"Index directory error: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))  # API 체크완료: HTTPException usage correct
     
+    @app.post("/reset-vector-store")
+    async def reset_vector_store(
+        container: Container = Depends(lambda: get_container(app))
+    ):
+        """Reset the vector store collection"""
+        try:
+            # Import ChromaDB to manually reset
+            import chromadb
+            from chromadb.config import Settings as ChromaSettings
+            from pathlib import Path
+            
+            # Delete the collection directly
+            chroma_path = Path("/data1/home/ict12/Kmong/medical_gait_rag/chroma_db")
+            client = chromadb.PersistentClient(
+                path=str(chroma_path),
+                settings=ChromaSettings(anonymized_telemetry=False)
+            )
+            
+            try:
+                client.delete_collection("gait_papers")
+                logger.info("Deleted existing collection: gait_papers")
+            except:
+                pass
+            
+            # Create new collection
+            client.create_collection(
+                name="gait_papers",
+                metadata={"hnsw:space": "cosine"}
+            )
+            logger.info("Created new collection: gait_papers")
+            
+            # Force recreate vector repository in container
+            container._vector_repo = None
+            
+            return {
+                "status": "success",
+                "message": "Vector store reset successfully"
+            }
+        except Exception as e:
+            logger.error(f"Reset vector store error: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
     @app.get("/statistics")
     async def get_statistics(
         container: Container = Depends(lambda: get_container(app))
@@ -354,22 +396,26 @@ def setup_routes(app: FastAPI):  # API 체크완료: Route setup function correc
             logger.error(f"Statistics error: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))  # API 체크완료: HTTPException usage correct
     
-    @app.delete("/documents/{document_id}")
+    @app.delete("/documents/{document_id:path}")
     async def delete_document(
         document_id: str,
         container: Container = Depends(lambda: get_container(app))
     ):
         """Delete a document and all its chunks"""
         try:
-            success = await container.delete_document_use_case.execute(document_id)
+            import urllib.parse
+            # URL decode the document_id
+            decoded_document_id = urllib.parse.unquote(document_id)
+            logger.info(f"Deleting document: {decoded_document_id}")
+            
+            success = await container.delete_document_use_case.execute(decoded_document_id)
             
             if success:
-                return {"message": f"Document {document_id} deleted successfully"}
+                return {"message": f"Document {decoded_document_id} deleted successfully"}
             else:
-                raise HTTPException(  # API 체크완료: HTTPException with 404 status correct
-                    status_code=404,
-                    detail=f"Document {document_id} not found"
-                )
+                # If no chunks found, consider it already deleted (idempotent operation)
+                logger.info(f"Document {decoded_document_id} not found or already deleted")
+                return {"message": f"Document {decoded_document_id} not found or already deleted", "deleted_count": 0}
                 
         except Exception as e:
             logger.error(f"Delete document error: {str(e)}")

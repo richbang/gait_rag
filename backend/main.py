@@ -14,7 +14,9 @@ from database.session import init_db
 
 # Import routers
 from auth.router import router as auth_router
+from auth.admin_router import router as admin_router
 from chat.router import router as chat_router
+from rag.routes import router as rag_router
 
 settings = get_settings()
 
@@ -78,6 +80,8 @@ async def log_requests(request: Request, call_next):
 # Include routers
 app.include_router(auth_router)
 app.include_router(chat_router)
+app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
+app.include_router(rag_router)
 
 
 @app.get("/")

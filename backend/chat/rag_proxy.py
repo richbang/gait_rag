@@ -112,9 +112,22 @@ class RAGProxyService:
         """Remove thinking tags and other artifacts from LLM response."""
         import re
         
+        # Nemotron sometimes generates content before </think> tag
+        # Pattern: "answer\n</think>\n\nanswer" (duplicated answer)
+        if '</think>' in text:
+            # Find content before </think> and remove it along with the tag
+            parts = text.split('</think>')
+            if len(parts) == 2:
+                # Keep only the content after </think>
+                cleaned = parts[1].strip()
+            else:
+                cleaned = text
+        else:
+            cleaned = text
+        
         # Remove Seed-OSS model specific thinking tags - multiple possible formats
         # Format 0: <:think> (actual format used by the model!)
-        cleaned = re.sub(r'<:think>', '', text, flags=re.IGNORECASE)
+        cleaned = re.sub(r'<:think>', '', cleaned, flags=re.IGNORECASE)
         cleaned = re.sub(r'</:think>', '', cleaned, flags=re.IGNORECASE)
         
         # Format 1: /seed:thinking ... /seed
@@ -173,6 +186,18 @@ class RAGProxyService:
         # Clean up extra whitespace
         cleaned = re.sub(r'\n\s*\n+', '\n\n', cleaned)
         cleaned = cleaned.strip()
+        
+        # Remove duplicate responses (Nemotron sometimes repeats the answer)
+        lines = cleaned.split('\n\n')
+        if len(lines) >= 2:
+            # Check if consecutive paragraphs are identical
+            unique_lines = []
+            prev_line = None
+            for line in lines:
+                if line != prev_line:
+                    unique_lines.append(line)
+                    prev_line = line
+            cleaned = '\n\n'.join(unique_lines)
         
         return cleaned
     

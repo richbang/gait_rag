@@ -121,13 +121,15 @@ class ChromaVectorStore(VectorRepository):
             # Add gait parameters if present
             if chunk.gait_parameters:
                 metadata["gait_params_count"] = len(chunk.gait_parameters)
-                metadata["gait_params"] = [
+                # Convert list to JSON string for ChromaDB compatibility
+                import json
+                metadata["gait_params"] = json.dumps([
                     {
                         "name": p.name,
                         "value": p.value,
                         "unit": p.unit
                     } for p in chunk.gait_parameters
-                ]
+                ])
             
             metadatas.append(metadata)
         
@@ -234,12 +236,14 @@ class ChromaVectorStore(VectorRepository):
         
         return search_results
     
-    async def delete_by_document(self, document_id: PaperId) -> int:
+    async def delete_by_document(self, document_id) -> int:
         """Delete all chunks for a document"""
+        # Accept both PaperId and str for flexibility
+        doc_id_str = str(document_id) if hasattr(document_id, '__str__') else document_id
+        
         # Get all chunk IDs for the document
-        results = self.collection.get(  # API 체크완료: collection.get(where=, include=) correct
-            where={"document_id": str(document_id)},
-            include=["ids"]
+        results = self.collection.get(  # API 체크완료: collection.get(where=) correct
+            where={"document_id": doc_id_str}
         )
         
         if results["ids"]:

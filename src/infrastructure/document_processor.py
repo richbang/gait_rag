@@ -88,12 +88,13 @@ class PDFDocumentProcessor(DocumentProcessorService):
         }
         
         try:
+            # 처리할 페이지 수 결정 (max_pages가 설정되면 제한)
             pages_to_process = min(len(doc), self.max_pages) if self.max_pages else len(doc)
             
             for page_num in range(pages_to_process):
                 page = doc[page_num]
                 
-                # Extract text
+                # PDF 페이지에서 텍스트 추출
                 text = page.get_text()
                 if text.strip():
                     result["text_pages"].append({
@@ -151,8 +152,14 @@ class PDFDocumentProcessor(DocumentProcessorService):
         chunks = []
         chunk_index = 0
         
-        # Create paper ID from filename
-        paper_id = Path(content["metadata"]["filename"]).stem
+        # Create paper ID from full file path for uniqueness
+        # Use relative path from data directory if possible
+        file_path = content["metadata"].get("file_path", content["metadata"]["filename"])
+        if "data/" in file_path:
+            # Extract relative path from data directory
+            paper_id = file_path.split("data/", 1)[1] if "data/" in file_path else file_path
+        else:
+            paper_id = file_path
         
         # Process text pages
         for page_data in content["text_pages"]:
@@ -240,9 +247,12 @@ class PDFDocumentProcessor(DocumentProcessorService):
                             param_name = group
                             # Find the numeric value
                             for g in groups:
-                                if g and re.match(r'^[\d.]+$', g):
-                                    value = float(g)
-                                    break
+                                if g and re.match(r'^[\d.]+$', g) and g != '.':
+                                    try:
+                                        value = float(g)
+                                        break
+                                    except ValueError:
+                                        continue
                             # Find the unit
                             for g in groups:
                                 if g and re.match(r'^[a-zA-Z/]+$', g):

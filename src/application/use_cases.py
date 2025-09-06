@@ -48,11 +48,11 @@ class IndexDocumentUseCase:
             raise ValueError(f"Only PDF files are supported, got: {file_path.suffix}")
         
         try:
-            # Extract content from PDF
+            # PDF에서 콘텐츠 추출
             logger.info(f"Processing: {file_path.name}")
             content = await self.document_processor.extract_content(file_path)
             
-            # Create chunks
+            # 텍스트를 청크로 분할 (overlap 포함)
             chunks = await self.document_processor.create_chunks(content)
             
             if not chunks:
@@ -64,17 +64,23 @@ class IndexDocumentUseCase:
                     message=f"No content extracted from {file_path.name}"
                 )
             
-            # Generate embeddings for chunks
+            # 각 청크에 대한 임베딩 생성 (Jina Embeddings v4 사용)
             logger.info(f"Generating embeddings for {len(chunks)} chunks")
             texts = [chunk.content for chunk in chunks]
             embeddings = await self.embedding_service.embed_batch(texts)
             
-            # Add embeddings to chunks
+            # 청크에 임베딩 벡터 추가
             for chunk, embedding in zip(chunks, embeddings):
                 chunk.embedding = embedding.tolist()
             
-            # Create document entity
-            document_id = Path(file_path).stem
+            # 문서 ID 생성 (data/ 디렉토리 기준 상대 경로 사용)
+            # 중복 인덱싱 방지를 위해 파일 경로를 고유 ID로 사용
+            file_path_str = str(file_path)
+            if "data/" in file_path_str:
+                document_id = file_path_str.split("data/", 1)[1]
+            else:
+                document_id = file_path_str
+            
             document = Document(
                 document_id=document_id,
                 filename=file_path.name,
@@ -91,10 +97,10 @@ class IndexDocumentUseCase:
                 indexed_at=datetime.now()
             )
             
-            # Index chunks in vector store
+            # ChromaDB에 청크 인덱싱
             await self.vector_repo.index_chunks(chunks)
             
-            # Calculate processing time
+            # 처리 시간 계산
             processing_time = (datetime.now() - start_time).total_seconds()
             
             logger.info(
@@ -136,10 +142,10 @@ class SearchDocumentsUseCase:
     async def execute(self, request: SearchRequest) -> SearchResponse:
         """Search for documents matching query"""
         try:
-            # Generate query embedding
+            # 쿼리를 임베딩으로 변환 (검색용)
             query_embedding = await self.embedding_service.embed_query(request.query)
             
-            # Create search query entity
+            # 검색 쿼리 엔티티 생성
             search_query = SearchQuery(
                 query_text=request.query,
                 limit=request.limit,
@@ -298,8 +304,9 @@ class DeleteDocumentUseCase:
     async def execute(self, document_id: str) -> bool:
         """Delete a document and all its chunks"""
         try:
-            paper_id = PaperId(document_id)
-            deleted_count = await self.vector_repo.delete_by_document(paper_id)
+            # For deletion, use document_id directly without PaperId validation
+            # since document IDs may contain Korean characters and special characters
+            deleted_count = await self.vector_repo.delete_by_document(document_id)
             logger.info(f"Deleted {deleted_count} chunks for document {document_id}")
             return deleted_count > 0
         except Exception as e:
