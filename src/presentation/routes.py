@@ -39,6 +39,7 @@ class QARequestModel(BaseModel):
     disease_categories: Optional[List[DiseaseCategory]] = None
     require_gait_params: bool = False
     min_score: float = 0.0
+    direct_mode: bool = False  # Direct LLM mode without document search
 
 
 class IndexDocumentRequestModel(BaseModel):
@@ -155,6 +156,34 @@ def setup_routes(app: FastAPI):  # API 체크완료: Route setup function correc
     ):
         """Search and generate answer using vLLM"""
         try:
+            # Check for direct mode (no document search)
+            if request.direct_mode:
+                logger.info(f"Direct mode activated for query: {request.query[:50]}...")
+                # Direct LLM mode without search
+                answer = None
+                if request.use_vllm and container.vllm_client:
+                    try:
+                        # Use general assistant prompt for chat mode
+                        chat_prompt = "You are a helpful assistant. Please respond naturally in Korean."
+                        answer = await container.vllm_client.generate(
+                            prompt=request.query,
+                            context=None,  # No document context in chat mode
+                            system_prompt=chat_prompt
+                        )
+                    except Exception as e:
+                        logger.error(f"Direct vLLM generation failed: {e}")
+                        answer = "답변 생성에 실패했습니다. 다시 시도해주세요."
+                else:
+                    answer = "LLM 서버가 사용 불가능합니다."
+                
+                return {
+                    "query": request.query,
+                    "answer": answer,
+                    "sources": [],
+                    "total_sources": 0,
+                    "vllm_used": answer is not None
+                }
+            
             # First, search for relevant documents
             search_request = SearchRequest(
                 query=request.query,
@@ -188,9 +217,10 @@ def setup_routes(app: FastAPI):  # API 체크완료: Route setup function correc
                         prompt=request.query,
                         context=context,
                         system_prompt=(
-                            "You are a medical research assistant specializing in gait analysis. "
-                            "Answer based on the provided research paper context. "
-                            "Be specific and cite the document sources when relevant."
+                            "You are a medical AI assistant specializing in gait analysis. "
+                            "Answer based on the provided research papers and clinical data. "
+                            "Be specific and cite document sources. "
+                            "Respond in Korean."
                         )
                     )
                 except Exception as e:

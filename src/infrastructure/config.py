@@ -108,11 +108,11 @@ class Settings(BaseSettings):
         env="VLLM_API_URL"
     )
     vllm_model: str = Field(
-        default="Seed-OSS-36B-Instruct-AWQ",
+        default="nemotron-nano-12b",  # Changed to Nemotron model
         env="VLLM_MODEL"
     )
     vllm_max_tokens: int = Field(
-        default=4096,
+        default=8192,  # Increased for longer responses
         env="VLLM_MAX_TOKENS"
     )
     vllm_temperature: float = Field(

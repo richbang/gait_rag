@@ -1,13 +1,14 @@
 """Main FastAPI application."""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from loguru import logger
+import time
 
 from core.config import get_settings
 from core.logging import setup_logging
-from core.middleware import ErrorHandlingMiddleware, RequestLoggingMiddleware, limiter, rate_limit_exceeded_handler
+from core.middleware import limiter, rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from database.session import init_db
 
@@ -42,23 +43,37 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS
+# Configure CORS - Allow all origins for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    max_age=3600,
+    expose_headers=["*"]
 )
-
-# Add custom middleware
-app.add_middleware(ErrorHandlingMiddleware)
-app.add_middleware(RequestLoggingMiddleware)
 
 # Add rate limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all HTTP requests."""
+    start_time = time.time()
+    
+    # Log request
+    logger.info(f"Request: {request.method} {request.url.path} from {request.client.host}")
+    
+    # Process request
+    response = await call_next(request)
+    
+    # Log response
+    process_time = time.time() - start_time
+    logger.info(f"Response: {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
+    
+    return response
 
 # Include routers
 app.include_router(auth_router)
@@ -73,6 +88,7 @@ def root():
         "version": settings.app_version,
         "environment": settings.environment
     }
+
 
 
 @app.get("/api/v1/health")

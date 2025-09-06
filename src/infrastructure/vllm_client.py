@@ -1,5 +1,5 @@
 """
-vLLM Client for Answer Generation
+vLLM Client for Answer Generation with Improved Prompt Engineering
 """
 
 import httpx
@@ -16,9 +16,9 @@ class VLLMClient:
     def __init__(
         self,
         api_url: str = "http://localhost:8000/v1",
-        model: str = "Seed-OSS-36B-Instruct-AWQ",
-        max_tokens: int = 4096,
-        temperature: float = 0.1,
+        model: str = "nemotron-nano-12b",  # Changed to Nemotron model
+        max_tokens: int = 8192,  # Increased for longer responses
+        temperature: float = 0.6,  # Nemotron recommended temperature
         timeout: int = 60
     ):
         """
@@ -62,21 +62,43 @@ class VLLMClient:
         # Construct full prompt
         full_prompt = self._construct_prompt(prompt, context, system_prompt)
         
-        # Prepare request payload
+        # Log the prompt for debugging
+        logger.info("=" * 80)
+        logger.info("LLM PROMPT:")
+        logger.info("-" * 80)
+        logger.info(full_prompt[:2000])  # Log first 2000 chars
+        
+        # Estimate token count (rough approximation: 1 token ≈ 3-4 characters for Korean/English)
+        estimated_tokens = len(full_prompt) // 3
+        
+        if len(full_prompt) > 2000:
+            logger.info(f"... (truncated, total length: {len(full_prompt)} chars, ~{estimated_tokens} tokens)")
+        else:
+            logger.info(f"Total length: {len(full_prompt)} chars, ~{estimated_tokens} tokens")
+        
+        # Warn if approaching context limit (assuming 32K context)
+        if estimated_tokens > 28000:
+            logger.warning(f"⚠️ Approaching context limit! Estimated tokens: {estimated_tokens}/32768")
+        elif estimated_tokens > 20000:
+            logger.info(f"📊 Context usage: {estimated_tokens}/32768 tokens ({estimated_tokens*100//32768}%)")
+        
+        logger.info("=" * 80)
+        
+        # Use regular completions endpoint (Nemotron and Seed-OSS support this)
         payload = {
             "model": self.model,
             "prompt": full_prompt,
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
-            "stream": False
+            "stream": False,
+            "top_p": 0.95  # Nemotron recommended setting
         }
+        
+        endpoint = f"{self.api_url}/completions"
         
         try:
             # Send request to vLLM server
-            response = await self.client.post(
-                f"{self.api_url}/completions",
-                json=payload
-            )
+            response = await self.client.post(endpoint, json=payload)
             response.raise_for_status()
             
             # Extract generated text
@@ -135,30 +157,89 @@ class VLLMClient:
         context: Optional[str] = None,
         system_prompt: Optional[str] = None
     ) -> str:
-        """Construct full prompt with context"""
+        """Construct full prompt with context using improved prompt engineering"""
         
+        # Default system prompt - simple and clear
         if system_prompt is None:
-            system_prompt = (
-                "You are a medical research assistant specializing in gait analysis. "
-                "Answer questions based on the provided research paper context. "
-                "Be accurate, concise, and cite specific findings when relevant."
-            )
+            system_prompt = "You are a helpful assistant. Respond naturally in Korean."
         
         if context:
-            full_prompt = f"""System: {system_prompt}
+            # RAG mode with document context
+            if "[이전 대화 내용]" in prompt:
+                # Extract conversation history and current question
+                parts = prompt.split("[현재 질문]")
+                if len(parts) == 2:
+                    conversation_part = parts[0].replace("[이전 대화 내용]", "").strip()
+                    current_question = parts[1].strip()
+                    
+                    # Improved prompt template for RAG mode with history
+                    full_prompt = f"""You are a medical AI assistant specializing in gait analysis. Answer in Korean.
 
-Context from research papers:
+### Previous conversation:
+{conversation_part}
+
+### Reference documents:
 {context}
 
-Question: {prompt}
+### User question: 
+{current_question}
 
-Answer: """
+### Assistant response (in Korean):"""
+                else:
+                    # Fallback for single question with context
+                    full_prompt = f"""You are a medical AI assistant specializing in gait analysis. Answer in Korean.
+
+### Reference documents:
+{context}
+
+### User question:
+{prompt}
+
+### Assistant response (in Korean):"""
+            else:
+                # Single question with context, no history
+                full_prompt = f"""You are a medical AI assistant specializing in gait analysis. Answer in Korean.
+
+### Reference documents:
+{context}
+
+### User question:
+{prompt}
+
+### Assistant response (in Korean):"""
         else:
-            full_prompt = f"""System: {system_prompt}
+            # Direct chat mode without document context
+            if "[이전 대화 내용]" in prompt:
+                # Extract conversation history and current question
+                parts = prompt.split("[현재 질문]")
+                if len(parts) == 2:
+                    conversation_part = parts[0].replace("[이전 대화 내용]", "").strip()
+                    current_question = parts[1].strip()
+                    
+                    # Simple chat prompt with history
+                    full_prompt = f"""You are a helpful assistant. Answer directly in Korean without showing your thinking process.
 
-Question: {prompt}
+### Previous conversation:
+{conversation_part}
 
-Answer: """
+### User: 
+{current_question}
+
+### Assistant (answer directly in Korean):"""
+                else:
+                    full_prompt = f"""You are a helpful assistant. Answer in Korean.
+
+### User:
+{prompt}
+
+### Assistant (in Korean):"""
+            else:
+                full_prompt = f"""You are a helpful assistant. Answer in Korean.
+
+### User:
+{prompt}
+
+### Assistant (in Korean):"""
         
         return full_prompt
     

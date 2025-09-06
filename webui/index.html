@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Gait RAG WebUI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Login Page */
+        #loginPage {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 400px;
+        }
+        
+        .login-box h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a67d8;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error-msg {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .switch-auth {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .switch-auth a {
+            color: #667eea;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        /* Main App */
+        #mainApp {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .header {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        
+        .container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .new-chat-btn {
+            width: 100%;
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .new-chat-btn:hover {
+            background: #218838;
+        }
+        
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .conversation-item {
+            padding: 15px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .conversation-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .conversation-item.active {
+            background: #e8eaf6;
+        }
+        
+        .conversation-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .conversation-date {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-bubble {
+            background: #667eea;
+            color: white;
+        }
+        
+        .message.assistant .message-bubble {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            margin-top: 5px;
+            opacity: 0.7;
+        }
+        
+        .chat-input-area {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .chat-input-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .vllm-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        
+        .send-btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .send-btn:hover:not(:disabled) {
+            background: #5a67d8;
+        }
+        
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+            font-size: 16px;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #667eea;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage">
+        <div class="login-box">
+            <h1>Medical Gait RAG</h1>
+            <div id="errorMsg" class="error-msg hidden"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn" id="authBtn">Login</button>
+            </form>
+            <div class="switch-auth">
+                <span id="switchText">Don't have an account?</span>
+                <a id="switchLink">Register</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main App -->
+    <div id="mainApp" class="hidden">
+        <div class="header">
+            <h1>Medical Gait RAG System</h1>
+            <div class="user-info">
+                <span id="userDisplay">Welcome</span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+        
+        <div class="container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <button class="new-chat-btn" onclick="createConversation()">
+                        + New Conversation
+                    </button>
+                </div>
+                <div class="conversations-list" id="conversationsList">
+                    <!-- Conversations will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <div id="chatContent" class="hidden" style="height: 100%; display: flex; flex-direction: column;">
+                    <div class="chat-messages" id="chatMessages">
+                        <!-- Messages will be displayed here -->
+                    </div>
+                    <div class="chat-input-area">
+                        <form class="chat-input-form" id="messageForm">
+                            <input type="text" class="chat-input" id="messageInput" 
+                                   placeholder="Type your question about gait analysis..." required>
+                            <label class="vllm-checkbox">
+                                <input type="checkbox" id="useVllm">
+                                <span>Use vLLM</span>
+                            </label>
+                            <button type="submit" class="send-btn" id="sendBtn">Send</button>
+                        </form>
+                    </div>
+                </div>
+                <div id="emptyState" class="empty-state">
+                    Select or create a conversation to start
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:8003';
+        let token = localStorage.getItem('token');
+        let currentUser = null;
+        let conversations = [];
+        let currentConversation = null;
+        let isLogin = true;
+        
+        // Check authentication on load
+        window.onload = function() {
+            if (token) {
+                checkAuth();
+            }
+        };
+        
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const authBtn = document.getElementById('authBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            
+            authBtn.disabled = true;
+            authBtn.textContent = 'Loading...';
+            errorMsg.classList.add('hidden');
+            
+            try {
+                const endpoint = isLogin ? 'login' : 'register';
+                const response = await fetch(`${API_URL}/api/v1/auth/${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.access_token;
+                    localStorage.setItem('token', token);
+                    currentUser = data.user;
+                    showMainApp();
+                } else {
+                    errorMsg.textContent = data.detail || 'Authentication failed';
+                    errorMsg.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorMsg.textContent = 'Connection failed. Please check if the server is running.';
+                errorMsg.classList.remove('hidden');
+            } finally {
+                authBtn.disabled = false;
+                authBtn.textContent = isLogin ? 'Login' : 'Register';
+            }
+        });
+        
+        // Switch between login and register
+        document.getElementById('switchLink').addEventListener('click', () => {
+            isLogin = !isLogin;
+            document.getElementById('authBtn').textContent = isLogin ? 'Login' : 'Register';
+            document.getElementById('switchText').textContent = isLogin ? "Don't have an account?" : "Already have an account?";
+            document.getElementById('switchLink').textContent = isLogin ? 'Register' : 'Login';
+            document.getElementById('errorMsg').classList.add('hidden');
+        });
+        
+        // Check authentication
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/api/v1/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    currentUser = await response.json();
+                    showMainApp();
+                } else {
+                    logout();
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                logout();
+            }
+        }
+        
+        // Show main app
+        function showMainApp() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('userDisplay').textContent = `Welcome, ${currentUser.username}`;
+            loadConversations();
+        }
+        
+        // Logout
+        function logout() {
+            localStorage.removeItem('token');
+            token = null;
+            currentUser = null;
+            conversations = [];
+            currentConversation = null;
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+        
+        // Load conversations
+        async function loadConversations() {
+            try {
+                const response = await fetch(`${API_URL}/api/v1/conversations`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    conversations = await response.json();
+                    displayConversations();
+                }
+            } catch (error) {
+                console.error('Failed to load conversations:', error);
+            }
+        }
+        
+        // Display conversations
+        function displayConversations() {
+            const list = document.getElementById('conversationsList');
+            list.innerHTML = '';
+            
+            conversations.forEach(conv => {
+                const item = document.createElement('div');
+                item.className = 'conversation-item';
+                if (currentConversation && currentConversation.id === conv.id) {
+                    item.classList.add('active');
+                }
+                
+                item.innerHTML = `
+                    <div class="conversation-title">${conv.title}</div>
+                    <div class="conversation-date">${new Date(conv.updated_at).toLocaleDateString()}</div>
+                `;
+                
+                item.onclick = () => selectConversation(conv);
+                list.appendChild(item);
+            });
+        }
+        
+        // Create new conversation
+        async function createConversation() {
+            try {
+                const response = await fetch(`${API_URL}/api/v1/conversations`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title: 'New Conversation' })
+                });
+                
+                if (response.ok) {
+                    const newConv = await response.json();
+                    await loadConversations();
+                    selectConversation(newConv);
+                }
+            } catch (error) {
+                console.error('Failed to create conversation:', error);
+            }
+        }
+        
+        // Select conversation
+        async function selectConversation(conv) {
+            try {
+                const response = await fetch(`${API_URL}/api/v1/conversations/${conv.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    currentConversation = await response.json();
+                    displayConversations();
+                    displayMessages();
+                    document.getElementById('emptyState').classList.add('hidden');
+                    document.getElementById('chatContent').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Failed to load conversation:', error);
+            }
+        }
+        
+        // Display messages
+        function displayMessages() {
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.innerHTML = '';
+            
+            if (currentConversation && currentConversation.messages) {
+                currentConversation.messages.forEach(msg => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${msg.role}`;
+                    
+                    const bubble = document.createElement('div');
+                    bubble.className = 'message-bubble';
+                    bubble.innerHTML = `
+                        ${msg.content}
+                        <div class="message-time">${new Date(msg.created_at).toLocaleTimeString()}</div>
+                    `;
+                    
+                    messageDiv.appendChild(bubble);
+                    messagesDiv.appendChild(messageDiv);
+                });
+                
+                // Scroll to bottom
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        }
+        
+        // Send message
+        document.getElementById('messageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const useVllm = document.getElementById('useVllm').checked;
+            const message = input.value.trim();
+            
+            if (!message || !currentConversation) return;
+            
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            
+            // Add loading message
+            const messagesDiv = document.getElementById('chatMessages');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.textContent = useVllm ? 'AI is thinking (this may take 30-60 seconds)...' : 'Searching documents...';
+            messagesDiv.appendChild(loadingDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            try {
+                const response = await fetch(`${API_URL}/api/v1/conversations/${currentConversation.id}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: message,
+                        use_vllm: useVllm,
+                        search_limit: 5,
+                        min_score: 0.3
+                    })
+                });
+                
+                if (response.ok) {
+                    input.value = '';
+                    await selectConversation(currentConversation);
+                } else {
+                    alert('Failed to send message');
+                }
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                alert('Failed to send message');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send';
+                if (loadingDiv) loadingDiv.remove();
+            }
+        });
+    </script>
+</body>
+</html>
